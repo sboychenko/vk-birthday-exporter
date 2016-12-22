@@ -1,8 +1,7 @@
 /**
  * Created by SBoichenko on 19.12.2016.
  */
-
-var birtdayList;
+moment.locale('ru');
 
 /** new toStr proto function for Array*/
 function fToStr() {
@@ -16,28 +15,57 @@ function fToStr() {
 }
 Array.prototype.toStr = fToStr;
 
+var birtdayList;
+var userInfo;
+
+function dateFormatter(date) {
+    if (date.getYear() == "0") {
+        return moment(date).format("D MMMM");
+    } else {
+        return moment(date).format("D MMMM YYYY г.");
+    }
+}
 
 /** on load */
 $(document).ready(function () {
     VK.Auth.getLoginStatus(function (r) {
         if (r.session) {
             console.log("Already auth");
-            console.log(r);
             uiLogin();
         }
         else {
-            uiLogout();
+            console.log("Not auth");
         }
     });
 });
 
+function getUserInfo(logout) {
+    if (logout) {
+        $("#userInfo").text("");
+        return;
+    }
+    console.log("Getting user info");
+    VK.Api.call(
+        "users.get",
+        {fields : "first_name,second_name"},
+        function (r) {
+            if (r.response) {
+                $("#userInfo").text("  Пользователь: " + r.response[0].first_name + " " + r.response[0].last_name);
+            }
+        }
+    );
+
+}
+
 /** UI functions */
 function uiLogin() {
+    getUserInfo();
     $("#login").addClass("disabled");
     $("#logout").removeClass("disabled");
 }
 
 function uiLogout() {
+    getUserInfo(true);
     $("#login").removeClass("disabled");
     $("#logout").addClass("disabled");
 }
@@ -50,8 +78,14 @@ function uiExportOn() {
 $("#login").click(function (event) {
     event.preventDefault();
     console.log("login");
-    VK.Auth.login(null, VK.access.FRIENDS);
-    uiLogin();
+    VK.Auth.login(
+        function (r) {
+            if (r.session) {
+                uiLogin();
+            }
+        },
+        VK.access.FRIENDS
+    );
 });
 
 $("#logout").click(function (event) {
@@ -108,7 +142,7 @@ $("#start").click(function (event) {
                     cityIds[e.city] = e.city;
                 });
 
-                console.log(filterResp);
+                //console.log(filterResp);
 
                 // Call VK api for cities name
                 VK.Api.call(
@@ -151,9 +185,10 @@ $("#start").click(function (event) {
                                 return id==0 ? "-" : id;
                             }
 
-                            $("#data").bootstrapTable(
-                                {data: filterResp}
-                            );
+                            $("#data").bootstrapTable({
+                                data: filterResp,
+                                search : true,
+                            });
 
                             //TODO process only selected
                             birtdayList = filterResp;
@@ -183,13 +218,17 @@ $("#export").click(function (event) {
     }
 
     var cal = ics("ru-RU");
+    c = 0;
     birtdayList.forEach(function (e) {
-        cal.addEvent(
-            "ДР " + e.first_name + " " + e.last_name,
-            e.link,
-            e.city,
-            e.birthday, e.birthday);
+        if ($("input#"+e.uid).prop("checked")) {
+            cal.addEvent(
+                "ДР " + e.first_name + " " + e.last_name,
+                e.link,
+                e.city,
+                e.birthday, e.birthday);
+            c++;
+        }
     });
-
+    alert("Будет выгруженно " + c + " дней рождений");
     cal.download("vk-birtdays");
 });
