@@ -12,3 +12,7 @@
 
 Ссылки
 * Импорт в google calendar [ссылка](https://support.google.com/calendar/answer/37118)
+
+---
+
+DEMO: http://bserg.ru/project/vk-exporter
