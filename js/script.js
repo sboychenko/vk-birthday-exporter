@@ -17,6 +17,7 @@ Array.prototype.toStr = fToStr;
 
 var birtdayList;
 var userInfo;
+var vkApiVersion = "5.52";
 
 function dateFormatter(date) {
     if (date.getYear() == "0") {
@@ -47,7 +48,7 @@ function getUserInfo(logout) {
     console.log("Getting user info");
     VK.Api.call(
         "users.get",
-        {fields : "first_name,second_name"},
+        {fields : "first_name,second_name", v: vkApiVersion},
         function (r) {
             if (r.response) {
                 $("#userInfo").text("  Пользователь: " + r.response[0].first_name + " " + r.response[0].last_name);
@@ -103,12 +104,12 @@ $("#start").click(function (event) {
         "friends.get",
         {
             order: "name",
-            fields: "bdate,nickname,city,domain"
-
+            fields: "bdate,nickname,city,domain",
+            v: vkApiVersion
         },
         function (r) {
             if (r.response) {
-                var resp = r.response;
+                var resp = r.response.items;
                 var status = {
                     "all": 0,
                     "deact": 0,
@@ -136,75 +137,45 @@ $("#start").click(function (event) {
                     " | Без дня рождения: " + (status.all - status.bday) +
                     " | Итого: " + filterResp.length);
 
-                // Collect SET of friend`s city ids
-                var cityIds = [];
                 filterResp.forEach(function (e) {
-                    cityIds[e.city] = e.city;
+                    e.check = "<input type='checkbox' id='"+e.id+"' class='e' checked/>";
+                    // create link
+                    e.link = "http://vk.com/" + e.domain;
+                    e.alink = "<a href=" + e.link + " target='_blank'>" + e.link + "</a>";
+                    // now Date from vk response
+                    var dt = e.bdate.split(".");
+                    var date;
+                    if (dt.length == 2) {
+                        // DD.MM
+                        date = new Date("1900", dt[1] - 1, dt[0]);
+                    } else {
+                        // DD.MM.YYYY
+                        date = new Date(dt[2], dt[1] - 1, dt[0]);
+                    }
+                    e.birthday = date;
+                    // Name of City
+                    if (e.city != undefined)
+                        e.city = e.city.title;
                 });
 
-                //console.log(filterResp);
+                $("#data").bootstrapTable({
+                    data: filterResp,
+                    search : true,
+                });
 
-                // Call VK api for cities name
-                VK.Api.call(
-                    "database.getCitiesById",
-                    {
-                        "city_ids": cityIds.toStr()
-                    },
-                    function (r) {
-                        if (r.response) {
-                            var cityMap = r.response;
+                birtdayList = filterResp;
+                uiExportOn();
 
-                            // Now transform api result to human-read view
-                            filterResp.forEach(function (e) {
-                                e.check = "<input type='checkbox' id='"+e.uid+"' class='e'/>";
-                                // create link
-                                e.link = "http://vk.com/" + e.domain;
-                                e.alink = "<a href=" + e.link + " target='_blank'>" + e.link + "</a>";
-                                // now Date from vk response
-                                var dt = e.bdate.split(".");
-                                var date;
-                                if (dt.length == 2) {
-                                    // DD.MM
-                                    date = new Date("1900", dt[1] - 1, dt[0]);
-                                } else {
-                                    // DD.MM.YYYY
-                                    date = new Date(dt[2], dt[1] - 1, dt[0]);
-                                }
-                                e.birthday = date;
-                                // Name of City
-                                e.city = getCityName(e.city);
-                            });
-
-                            // Get city name from api response
-                            function getCityName(id) {
-                                for (i = 0; i < cityMap.length; i++) {
-                                    if (id == cityMap[i].cid) {
-                                        return cityMap[i].name;
-                                    }
-                                }
-                                return id==0 ? "-" : id;
-                            }
-
-                            $("#data").bootstrapTable({
-                                data: filterResp,
-                                search : true,
-                            });
-
-                            //TODO process only selected
-                            birtdayList = filterResp;
-                            uiExportOn();
-
-                            $("input#all").change(function (event) {
-                                event.preventDefault();
-                                if ($(this).prop("checked")) {
-                                    $("input.e").prop("checked", true);
-                                } else {
-                                    $("input.e").prop("checked", false);
-                                }
-                            });
-                        }
+                $("input#all").change(function (event) {
+                    event.preventDefault();
+                    if ($(this).prop("checked")) {
+                        $("input.e").prop("checked", true);
+                    } else {
+                        $("input.e").prop("checked", false);
                     }
-                );
+                });
+                $("#all").prop('checked', true);
+
             }
         });
 });
@@ -220,15 +191,16 @@ $("#export").click(function (event) {
     var cal = ics("ru-RU");
     c = 0;
     birtdayList.forEach(function (e) {
-        if ($("input#"+e.uid).prop("checked")) {
+        if ($("input#"+e.id).prop("checked")) {
             cal.addEvent(
                 "ДР " + e.first_name + " " + e.last_name,
                 e.link,
                 e.city,
-                e.birthday, e.birthday);
+                e.birthday, e.birthday,
+                {freq: "YEARLY"});
             c++;
         }
     });
-    alert("Будет выгруженно " + c + " дней рождений");
-    cal.download("vk-birtdays");
+    alert("Будет выгружено " + c + " дней рождений");
+    cal.download("vk-birthdays");
 });
