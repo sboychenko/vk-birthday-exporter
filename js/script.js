@@ -17,7 +17,7 @@ Array.prototype.toStr = fToStr;
 
 var birtdayList;
 var userInfo;
-var vkApiVersion = "5.52";
+var vkApiVersion = "5.131";
 
 function dateFormatter(date) {
     if (date.getYear() == "0") {
