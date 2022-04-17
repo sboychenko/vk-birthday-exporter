@@ -26,5 +26,5 @@
 ---
 
 DEMO:
-    http://sboychenko.ru/project/vk-exporter
-    http://ectica.io/vk/index.html
+* http://sboychenko.ru/project/vk-exporter
+* http://ectica.io/vk/index.html
